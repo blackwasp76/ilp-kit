@@ -6,7 +6,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 module.exports = WebfingerControllerFactory
 
-const url = require('url')
 const request = require('five-bells-shared/utils/request')
 const Log = require('../lib/log')
 const Config = require('../lib/config')
@@ -69,35 +68,62 @@ function WebfingerControllerFactory(log, config, ledger) {
         return this.status = 400
       }
 
-      // TODO rel support
-      const parsed = url.parse(this.query.resource);
+      const resource = this.query.resource
 
-      // Validate ledger
-      if (config.data.getIn(['ledger', 'public_uri']).indexOf(parsed.hostname) < 0) {
-        throw new NotFoundError('Unknown account')
-      }
+      if (resource.slice(0, 5) === 'acct:') {
+        const splitResource = resource.slice(5).split('@')
+        if (splitResource.length !== 2) {
+          throw new NotFoundError('acct: URIs must contain exactly one @-symbol')
+        }
 
-      let username
+        const [username, hostname] = splitResource
 
-      // resource is an acct:
-      if (parsed.auth) {
-        username = parsed.auth
-      }
-      // resource is a http(s):
-      else if (parsed.path) {
-        username = parsed.path.match(/([^\/]*)\/*$/)[1]
-      }
-      else {
-        throw new NotFoundError('Unknown account')
+        if (hostname !== config.data.get('client_host')) {
+          throw new NotFoundError('Client asked about a user on another server, we are: ' +
+            config.data.get('client_host'))
+        }
+
+        this.body = yield getWebfingerForUser(username)
+      } else if (resource.slice(0, 6) === 'https:') {
+        // Host lookup
+        if (resource === config.data.get('client_uri')) {
+          this.body = {
+            'subject': config.data.get('client_uri'),
+            'properties': {
+              'https://interledger.org/rel/publicKey': config.data.getIn(['connector', 'public_key'])
+            },
+            'links': [
+              {
+                'rel': 'https://interledger.org/rel/ledgerUri',
+                'href': config.data.getIn(['ledger', 'public_uri'])
+              },
+              {
+                'rel': 'https://interledger.org/rel/peersRpcUri',
+                'href': config.data.getIn(['server', 'base_uri']) + '/peers/rpc'
+              }
+            ]
+          }
+        }
+        const ledgerUri = config.data.getIn(['ledger', 'public_uri'])
+        const ledgerAccountsUri = ledgerUri + '/accounts/'
+        if (resource.slice(0, ledgerAccountsUri.length) === ledgerAccountsUri) {
+          const username = resource.match(/([^\/]*)\/*$/)[1]
+          this.body = yield getWebfingerForUser(username)
+        } else {
+          throw new NotFoundError('Unrecognized resource URI, should start with: ' +
+            ledgerAccountsUri)
+        }
+      } else {
+        throw new NotFoundError('Unknown protocol')
       }
 
       // Account lookup
-      if (username) {
+      function * getWebfingerForUser(username) {
         // Validate the ledger account
         const ledgerUser = yield ledger.getAccount({ username: username }, true)
 
-        return this.body = {
-          'subject': 'acct:' + ledgerUser.name + '@' + parsed.hostname,
+        return {
+          'subject': 'acct:' + ledgerUser.name + '@' + config.data.get('client_host'),
           'links': [
             {
               // TODO decide on rel names
@@ -127,24 +153,6 @@ function WebfingerControllerFactory(log, config, ledger) {
             }
           ]
         }
-      }
-
-      // Host lookup
-      this.body = {
-        'subject': config.data.get('client_uri'),
-        'properties': {
-          'https://interledger.org/rel/publicKey': config.data.getIn(['connector', 'public_key'])
-        },
-        'links': [
-          {
-            'rel': 'https://interledger.org/rel/ledgerUri',
-            'href': config.data.getIn(['ledger', 'public_uri'])
-          },
-          {
-            'rel': 'https://interledger.org/rel/peersRpcUri',
-            'href': config.data.getIn(['server', 'base_uri']) + '/peers/rpc'
-          }
-        ]
       }
     }
   }
