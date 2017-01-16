@@ -90,6 +90,13 @@ export function uuid(value) {
   }
 }
 
+export function https(value) {
+  if (!isEmpty(value) &&
+    !/^https:\/\/[^\s/$.?#].[^\s]*$/i.test(value)) {
+    return 'Invalid'
+  }
+}
+
 export function createValidator(rules) {
   return (data = {}) => {
     const errors = {}

@@ -131,7 +131,7 @@ function WebfingerControllerFactory(log, config, ledger) {
 
       // Host lookup
       this.body = {
-        'subject': config.data.get('client_host'),
+        'subject': config.data.get('client_uri'),
         'properties': {
           'https://interledger.org/rel/publicKey': config.data.getIn(['connector', 'public_key'])
         },

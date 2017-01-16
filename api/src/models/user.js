@@ -74,7 +74,7 @@ function UserFactory (sequelize, validator, ledger, config, utils) {
     }
 
     static getVerificationLink(username, email) {
-      return config.data.get(['client_host']) + '/verify/' + username + '/' + User.getVerificationCode(email)
+      return config.data.get(['client_uri']) + '/verify/' + username + '/' + User.getVerificationCode(email)
     }
 
     static * setupAdminAccount() {
@@ -194,7 +194,7 @@ function UserFactory (sequelize, validator, ledger, config, utils) {
     }
 
     generateForgotPasswordLink() {
-      return config.data.get(['client_host']) + '/change-password/' + this.username + '/' + this.generateForgotPasswordCode()
+      return config.data.get(['client_uri']) + '/change-password/' + this.username + '/' + this.generateForgotPasswordCode()
     }
 
     verifyForgotPasswordCode(code) {
