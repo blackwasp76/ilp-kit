@@ -1,4 +1,8 @@
 machine:
+  hosts:
+    wallet1.example: 127.0.0.1
+    wallet2.example: 127.0.0.1
+    wallet3.example: 127.0.0.1
   node:
     version: 6.9
   services:
@@ -7,13 +11,19 @@ machine:
 dependencies:
   cache_directories:
     - node_modules
-  override:
-    - npm prune && npm install
+#  override:
+#    - npm prune && npm install
+  post:
+    - sudo mkdir /etc/apache2/ssl
+    - sudo cp assets/ci/ssl/* /etc/apache2/ssl
+    - sudo cp assets/ci/httpd-vhosts.conf /etc/apache2/httpd-vhosts.conf
+    - sudo cat /etc/apache2/httpd.conf
+    - sudo service apache2 restart
 
 test:
   override:
 #   - npm run lint
-    - npm test
+#   - npm test
     - npm run integration
   post:
     - docker build -t interledgerjs/ilp-kit:latest .
