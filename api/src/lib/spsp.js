@@ -34,8 +34,11 @@ module.exports = class SPSP {
     this.factory = new PluginBellsFactory({
       adminUsername: adminUsername,
       adminPassword: adminPassword,
-      adminAccount: this.config.data.getIn(['ledger', 'public_uri']) + '/accounts/' + adminUsername
+      adminAccount: this.config.data.getIn(['ledger', 'public_uri']) + '/accounts/' + adminUsername,
+      globalSubscription: true
     })
+
+    this.factory.on('notification', this._handleNotification.bind(this))
 
     this.connect()
   }
@@ -250,5 +253,9 @@ module.exports = class SPSP {
     })
 
     return request
+  }
+
+  _handleNotification(notification) {
+    console.log('plugin bells event', notification)
   }
 }
